@@ -40,7 +40,6 @@ class PlattsAPIClient:
             self.api_token = response.json().get('access_token')  # Adjust based on the actual response structure
             if not self.api_token:
                 raise Exception("Failed to obtain Bearer token")
-            print("Token fetched")
             return self.api_token
         else:
             raise Exception(f"Authentication failed: {response.status_code}, {response.text}")

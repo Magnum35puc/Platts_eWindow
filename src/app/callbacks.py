@@ -1,6 +1,6 @@
 from dash.dependencies import Input, Output, State
 from dash.exceptions import PreventUpdate
-from ..data.api_client import PlattsAPIClient  # Assuming the client is in data/api_client.py
+from data.api_client import PlattsAPIClient  # Assuming the client is in data/api_client.py
 import plotly.graph_objects as go
 import pandas as pd
 import plotly.express as px
@@ -153,7 +153,6 @@ def register_callbacks(app):
         try:
             # Fetch the filtered data with the date range applied
             df = client.fetch_ewindow_data(filters=filters)
-            print(df[["update_time", "market_maker","price", "c1_price"]])
 
             if df.empty:
                 return go.Figure(go.Scatter(x=[], y=[], mode='lines+markers', title="No data available"))
