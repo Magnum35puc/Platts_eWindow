@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='Platts_eWindow_dashboard',  # Replace with your package name
-    version='1.0.0',
+    version='1.0.5',
     description='A Dash app for visualizing Platts eWindow data',
     author='Magnum35puc',
     packages=find_packages(where='src'),  # Include all Python packages inside src/
@@ -12,7 +12,7 @@ setup(
         'dash>=2.0.0',
         'plotly>=5.0.0',
         'pandas',
-        'requests'
+        'requests',
     ],
     entry_points={
         'console_scripts': [
