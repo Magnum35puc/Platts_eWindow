@@ -1,5 +1,5 @@
 import dash
-from dash import dcc, html
+from dash import dcc, html, dash_table
 
 # Define the layout of the dashboard with dark mode
 layout = html.Div([
@@ -95,8 +95,33 @@ layout = html.Div([
         ),
     ], style={'padding': '10px', 'border': '1px solid #555', 'borderRadius': '5px', 'backgroundColor': '#222', 'marginTop': '10px'}),
 
-    # Maximized Graph for order evolution
+
     html.Div([
-        dcc.Graph(id='order-graph', style={'width': '100%', 'height': '80vh'})  # Graph takes up 80% of the viewport height
-    ], style={'padding': '20px', 'border': '1px solid #555', 'borderRadius': '5px', 'backgroundColor': '#222'})
+        dcc.Graph(id='order-graph', style={'width': '100%', 'height': '70vh'}),  # Graph takes 70% of the viewport
+        html.H2("Deal Table", style={'color': 'white', 'marginTop': '20px'}),
+        dash_table.DataTable(
+            id='deal-table',
+            columns=[
+                        {'name': 'Order Platts ID', 'id': 'order_platts_id'},
+                        {'name': 'Market Maker', 'id': 'market_maker'},
+                        {'name': 'Product', 'id': 'product'},
+                        {'name': 'Hub', 'id': 'hub'},
+                        {'name': 'Quantity', 'id': 'order_quantity'},
+                        {'name': 'Price', 'id': 'price'},
+                        {'name': 'Buyer', 'id': 'buyer'},
+                        {'name': 'Seller', 'id': 'seller'},
+                        {'name': 'Order State', 'id': 'order_state'},
+                        {'name': 'Window State', 'id': 'window_state'},
+                        {'name': 'Deal Start', 'id': 'order_begin'},
+                        {'name': 'Deal End', 'id': 'order_end'}
+                    ],
+            style_cell={'textAlign': 'left', 'color': 'white', 'backgroundColor': '#1f1f1f'},
+            style_header={'backgroundColor': '#333', 'fontWeight': 'bold', 'color': 'white'},
+            style_data_conditional=[{'if': {'row_index': 'odd'}, 'backgroundColor': '#444'}],
+            data=[],  # Populated by the callback
+            page_size=10,
+            style_table={'overflowX': 'auto', 'height': '30vh'}  # Deal table takes 30% of the viewport
+        )
+    ], style={'padding': '5vh', 'border': '1px solid #555', 'borderRadius': '5px', 'backgroundColor': '#222'}),
+
 ], style={'backgroundColor': '#1f1f1f'})  # Dark background for the overall page

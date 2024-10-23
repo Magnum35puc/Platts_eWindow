@@ -95,14 +95,15 @@ def register_callbacks(app):
 
     # Callback to load data based on category selections, date range, and price type
     @app.callback(
-        Output('order-graph', 'figure'),
-        Input('load-data-button', 'n_clicks'),
-        Input('price-type-selector', 'value'),  # Capture selected price type
-        State('market-selector', 'value'),
+        [Output('order-graph', 'figure'),  # Output the figure for the graph
+        Output('deal-table', 'data')],    # Output the data for the deal table
+        [Input('load-data-button', 'n_clicks'),
+        Input('price-type-selector', 'value')],
+        [State('market-selector', 'value'),
         State('hub-selector', 'value'),
         State('product-selector', 'value'),
-        State('date-range-picker', 'start_date'),  # Capture start date
-        State('date-range-picker', 'end_date')     # Capture end date
+        State('date-range-picker', 'start_date'),
+        State('date-range-picker', 'end_date')]
     )
     def load_data(n_clicks, selected_price_type, selected_market, selected_hub, selected_product, start_date, end_date):
         global client
@@ -130,9 +131,8 @@ def register_callbacks(app):
                     title_text='Market Maker',
                     valign="middle"
                 ),
-                height=800  # Adjust graph height to give enough space for the legend
             )
-            return fig
+            return fig,[]
 
         if client is None:
             raise PreventUpdate
@@ -154,8 +154,36 @@ def register_callbacks(app):
             # Fetch the filtered data with the date range applied
             df = client.fetch_ewindow_data(filters=filters)
 
+
             if df.empty:
-                return go.Figure(go.Scatter(x=[], y=[], mode='lines+markers', title="No data available"))
+                # Return an empty figure with dark mode
+                return go.Figure(go.Scatter(x=[], y=[], mode='lines+markers')).update_layout(
+                    paper_bgcolor='#1f1f1f',  # Dark background
+                    plot_bgcolor='#1f1f1f',   # Dark background for the plot area
+                    font=dict(color='white'),  # White font for labels
+                    xaxis=dict(showgrid=True, gridcolor='#444', color='white', title_font=dict(color='white'), tickfont=dict(color='white')),  # White axes and gridlines
+                    yaxis=dict(showgrid=True, gridcolor='#444', color='white', title_font=dict(color='white'), tickfont=dict(color='white')),  # White axes and gridlines
+                    xaxis_title="Update Time",
+                    yaxis_title="Price",
+                    hovermode="closest",
+                    legend=dict(
+                        orientation='h',  
+                        yanchor="bottom",
+                        y=-0.5,  
+                        xanchor="center",
+                        x=0.5,
+                        font=dict(size=10, color='white')
+                    ),
+                ), []
+
+            
+            # Ensure order_begin and order_end columns exist in the DataFrame
+            if 'order_begin' not in df.columns or 'order_end' not in df.columns:
+                raise Exception("order_begin or order_end columns not found in the data")
+
+
+            # Filter deals where both buyer and seller are filled
+            deals_df = df[(df['buyer'].notna()) & (df['seller'].notna()) & (df['buyer'] != '') & (df['seller'] != '')]
 
             # Sort data by 'order_platts_id' and 'update_time' to ensure correct plotting
             df = df.sort_values(by=['order_platts_id', 'update_time'])
@@ -191,7 +219,7 @@ def register_callbacks(app):
                 # Show the legend only for the first order for each market_maker
                 show_legend = market_maker not in legend_shown
                 legend_shown[market_maker] = True  # Mark the market maker as added to the legend
-
+                print(df_order.head())
                 # Plot individual orders, but group by market_maker for the legend
                 fig.add_trace(go.Scatter(
                     x=df_order['update_time'],
@@ -199,15 +227,34 @@ def register_callbacks(app):
                     mode='lines+markers',  # Both lines and markers
                     name=f"{market_maker}",  # Use only the market_maker name for the legend
                     legendgroup=market_maker,  # Group all orders for this market_maker under the same legend
+                    showlegend=show_legend,  # Show legend only for the first order of each market_maker
                     marker=dict(symbol=df_order['symbol'], size=df_order['size'], color=color),
                     line=dict(color=color, shape='hv'),  # Set line color based on market_maker
                     hoverinfo='text',
-                    text=[f'Market Maker: {mm}<br>Update Time: {ut}<br>{selected_price_type.replace("_", " ").capitalize()}: {price}<br>Product: {product}<br>Hub: {hub}<br>Order Platts ID: {order_id}<br>Quantity: {qty}<br>Buyer: {b}<br>Seller: {s}<br>Order State: {os}<br>Window State: {ws}<br>Strip: {strip}<br>Order Type: {ot}'
-                          for mm, ut, price, product, hub, qty, b, s, os, ws, strip, ot in zip(df_order['market_maker'], df_order['update_time'], df_order[selected_price_type],
-                                                                             df_order['product'], df_order['hub'], df_order['order_quantity'], df_order['buyer'], df_order['seller'],
-                                                                             df_order['order_state'], df_order['window_state'], df_order['strip'], df_order['order_type'])],
-                    showlegend=show_legend  # Show the legend only for the first trace of the market_maker
-                ))
+                    text=[f'''<b>{ot} from {mm}</b><br><b>{selected_price_type.replace("_", " ").capitalize()}:</b> {price}<br><b>Quantity:</b> {qty}<br><b>Product:</b> {pdt}<br><b>Hub:</b> {hub}<br><b>Strip:</b> {strip}<br><b>Laycan:</b> {ds} - {de}<br><b>Buyer:</b> {b if b else 'N/A'}<br><b>Seller:</b> {s if s else 'N/A'}<br><b>Order State:</b> {os}<br><b>Window State:</b> {ws}<br><b>Order Platts ID:</b> {order_id}<br><b>Update Time:</b> {ut}<br>'''
+                    for mm, ut, price, qty, b, s, os, ws, strip, ot, ds, de,pdt,hub in zip(
+                        df_order['market_maker'], 
+                        df_order['update_time'], 
+                        df_order[selected_price_type], 
+                        df_order['order_quantity'], 
+                        df_order['buyer'], 
+                        df_order['seller'], 
+                        df_order['order_state'], 
+                        df_order['window_state'], 
+                        df_order['strip'], 
+                        df_order['order_type'], 
+                        df_order['order_begin'], 
+                        df_order['order_end'],
+                        df_order['product'], 
+                        df_order['hub'], 
+                    )],
+                     # Styling the hover label
+                    hoverlabel=dict(
+                        font_size=14,            # Increase font size
+                        namelength=-1            # Show full name without truncating
+                    )
+                    ))
+            fig.update_layout(dragmode='pan', xaxis_rangeslider_visible=True)
 
             # Update layout of the figure for dark mode
             fig.update_layout(
@@ -221,19 +268,16 @@ def register_callbacks(app):
                 hovermode="closest",
                 legend=dict(
                     orientation='h',  # Set legend to horizontal
-                    yanchor="bottom",  # Anchor legend at the bottom
-                    y=-0.5,  # Adjust to prevent overlap with the chart
+                    yanchor="top",  # Anchor legend at the bottom
                     xanchor="center",
                     x=0.5,
                     traceorder="grouped",  # Group by market maker in the legend
                     font=dict(size=10, color='white'),  # White font for the legend
-                    title_text='Market Maker',
                     valign="middle"
                 ),
-                height=800  # Adjust graph height to give enough space for the legend
             )
-
-            return fig
+            clean_deals_df = clean_deals_data(deals_df)
+            return fig, clean_deals_df.to_dict('records')
         
         except Exception as e:
             print(f"Error fetching data: {e}")
@@ -241,3 +285,9 @@ def register_callbacks(app):
 
 
 
+# Clean data to ensure only valid types are passed to the DataTable
+def clean_deals_data(deals_df):
+    # Convert all non-stringable objects to strings
+    for col in deals_df.columns:
+        deals_df[col] = deals_df[col].apply(lambda x: str(x) if pd.notna(x) else "")
+    return deals_df
